@@ -30,9 +30,13 @@ app.use('/', new UDIDFetcher({
 	organization: 'Developer Name',
 	doneURL: '/',
 	callbackURL: `https://example.com/confirm`,
-	done: (device) => {
-		// Access DeviceData properties
+	done: (device, req) => {
+		/**
+		 * device - DeviceData interface
+		 * req    - ExpressJS Request interface
+		 */
 		console.log(device)
+		console.log(req.path)
 	}
 }).router);
 

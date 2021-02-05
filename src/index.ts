@@ -50,7 +50,7 @@ export interface UDIDFetcherOptions {
 	identifier: string
 	callbackURL: string
 	doneURL: string
-	done: (data: DeviceData) => void
+	done: (data: DeviceData, req: Request) => void
 }
 
 interface IPSWRes {
@@ -215,7 +215,7 @@ export class UDIDFetcher {
 
 				this.removeId(req.query.flow as string);
 
-				this._data.done(arr);
+				this._data.done(arr, req);
 
 				res.redirect(this._data.doneURL);
 			}
