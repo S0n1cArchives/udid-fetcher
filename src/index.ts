@@ -215,7 +215,7 @@ export class UDIDFetcher {
 
 				this.removeId(req.query.flow as string);
 
-				this._data.done(arr, req);
+				await this._data.done(arr, req);
 
 				res.redirect(this._data.doneURL);
 			}
