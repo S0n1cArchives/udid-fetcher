@@ -8,7 +8,6 @@ import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
 
-import { parse as uparse } from 'useragent';
 
 export interface DeviceData {
 	name: string,
@@ -23,7 +22,6 @@ export interface DeviceData {
 		build: string,
 		fixVersion?: boolean,
 		signed?: boolean
-		beta?: boolean
 	}
 }
 
@@ -79,6 +77,7 @@ interface IPSWRes {
 export class UDIDFetcher {
 	router = app()
 	private _data: UDIDFetcherOptions
+	flow_ids: string[] = []
 	constructor(options: UDIDFetcherOptions) {
 		Object.defineProperty(this, '_data', {
 			value: options,
@@ -90,6 +89,19 @@ export class UDIDFetcher {
 	}
 
 	initConfigs():void {
+		this.router.use((req: WithRaw, res, next) => {
+			req.rawBody = '';
+			req.setEncoding('utf8');
+
+			req.on('data', (chunk) => {
+				req.rawBody += chunk;
+			});
+
+			req.on('end', () => {
+				next();
+			});
+		});
+
 		this.router.use(json());
 	}
 
@@ -98,11 +110,43 @@ export class UDIDFetcher {
 		return res.json();
 	}
 
+	getVersion(results: IPSWRes, build: string): string {
+		console.log(build);
+		return results.firmwares.find(f => f.buildid === build).version;
+	}
+
+	getSigningStatus(results: IPSWRes, build: string): boolean {
+		return results.firmwares.find(f => f.buildid === build).signed;
+	}
+
+	genString(length = 10): string {
+		var result           = '';
+		var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var charactersLength = characters.length;
+		for (var i = 0; i < length; i++) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
+	}
+
+	createId(): string {
+		const id = this.genString();
+		console.log(id);
+		this.flow_ids.push(id);
+		console.log(this.flow_ids);
+		return id;
+	}
+
+	removeId(id: string): void {
+		this.flow_ids.splice(this.flow_ids.indexOf(id), 1);
+	}
+
 	initRoutes(): void {
 		this.router.get('/enroll', (req, res) => {
 			let config = readFileSync(join(__dirname, '..', 'enrollment.mobileconfig'), 'utf-8');
 			const xml: MC = parse(config) as unknown as MC;
-			xml.PayloadContent.URL = this._data.callbackURL;
+			const flow_id = this.createId();
+			xml.PayloadContent.URL = `${this._data.callbackURL}?flow=${flow_id}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
 			xml.PayloadDisplayName = this._data.name;
@@ -120,20 +164,28 @@ export class UDIDFetcher {
 		});
 
 		this.router.post('/confirm', (req: WithRaw, res) => {
-			if (typeof req.query.next !== 'undefined') {
-				var rawdata = req.rawBody;
-				if (typeof rawdata === 'undefined') {
-					throw 'failed to get rawdata';
-				}
-
-				var data = parse(rawdata);
-
-
-				return res.redirect(301, `/enrollment?data=${btoa(JSON.stringify(data))}`);
+			var rawdata = req.rawBody;
+			if (typeof rawdata === 'undefined') {
+				console.log('failed');
+				throw 'failed to get rawdata';
 			}
+
+			console.log(rawdata.length);
+
+			var data = parse(rawdata);
+
+
+			return res.redirect(301, `/enrollment?data=${btoa(JSON.stringify(data))}&flow=${req.query.flow}`);
 		});
 
 		this.router.get('/enrollment', async (req, res) => {
+			if (!this.flow_ids.includes(req.query.flow as string)) {
+				/*
+				 * return res.json({ ...req.query,
+				 * 	ids: this.flow_ids });
+				 */
+				return res.redirect(this._data.doneURL);
+			}
 			if (typeof req.query.data !== 'undefined') {
 				const data = JSON.parse(atob(req.query.data as string));
 
@@ -155,41 +207,15 @@ export class UDIDFetcher {
 					model: data.PRODUCT,
 					ios: {
 						build: data.VERSION,
-						version: uparse(req.headers['user-agent']).os.toVersion()
+						version: this.getVersion(results, data.VERSION),
+						signed: this.getSigningStatus(results, data.VERSION)
 					}
 				};
 
-				var versionFix = arr.ios.version.split('.');
-				if (typeof versionFix[2] !== 'undefined') {
-					if (versionFix[2] === '0') {
-						versionFix.splice(2, 1);
-						arr.ios.version = versionFix.join('.');
-						arr.ios.fixVersion = true;
-					} else {
-						arr.ios.fixVersion = false;
-					}
-				} else {
-					arr.ios.fixVersion = false;
-				}
 
+				this.removeId(req.query.flow as string);
 
-				var tmpvs = [];
-				results.firmwares.forEach((item) => {
-					if (arr.ios.version === item.version) {
-						tmpvs.push(item);
-					}
-				});
-				if (tmpvs.length > 0) {
-					arr.ios.signed = tmpvs[0].signed;
-					arr.ios.beta = false;
-				} else {
-					arr.ios.signed = null;
-					arr.ios.beta = true;
-				}
-
-				// eslint-disable-next-line prefer-destructuring
-				const done: (data: DeviceData) => Promise<void> = this._data.done as (data: DeviceData) => Promise<void>;
-				await done(arr);
+				this._data.done(arr);
 
 				res.redirect(this._data.doneURL);
 			}
@@ -197,6 +223,7 @@ export class UDIDFetcher {
 	}
 
 	init(): void {
+		this.initConfigs();
 		this.initRoutes();
 	}
 }

@@ -2,7 +2,7 @@ import express from 'express';
 import { DeviceData, UDIDFetcher } from '../src';
 
 const app = express();
-const port = 5000;
+const port = 5420;
 
 const devices: DeviceData[] = [];
 
@@ -14,7 +14,7 @@ app.use('/', new UDIDFetcher({
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
 	doneURL: '/',
-	callbackURL: 'http://s0n1c-laptop.local:5000/enrollment',
+	callbackURL: 'https://udid.s0n1c.ca/confirm',
 	done: (device) => {
 		devices.push(device);
 	}
