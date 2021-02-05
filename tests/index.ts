@@ -1,8 +1,10 @@
+import { config } from 'dotenv';
 import express from 'express';
 import { DeviceData, UDIDFetcher } from '../src';
 
+config();
 const app = express();
-const port = 5420;
+const port = process.env.PORT;
 
 const devices: DeviceData[] = [];
 
@@ -14,7 +16,7 @@ app.use('/', new UDIDFetcher({
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
 	doneURL: '/',
-	callbackURL: 'https://udid.s0n1c.ca/confirm',
+	callbackURL: `${process.env.API_URL}/confirm`,
 	done: (device) => {
 		devices.push(device);
 	}

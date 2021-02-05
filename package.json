@@ -1,16 +1,19 @@
 {
-  "name": "ts-template",
+  "name": "udid-fetcher",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "author": "S0n1c",
   "scripts": {
-    "dev": "ts-node-dev ./tests/index.ts"
+    "dev": "ts-node-dev ./tests/index.ts",
+    "build": "tsc -p ."
   },
   "devDependencies": {
     "@types/atob": "^2.1.2",
     "@types/body-parser": "^1.19.0",
     "@types/btoa": "^1.2.3",
+    "@types/dotenv": "^8.2.0",
     "@types/node": "^14.14.7",
     "@types/node-fetch": "^2.5.8",
     "@types/useragent": "^2.3.0",
@@ -27,6 +30,7 @@
     "atob": "^2.1.2",
     "body-parser": "^1.19.0",
     "btoa": "^1.2.1",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "node-fetch": "^2.6.1",
     "plist": "^3.0.1",
