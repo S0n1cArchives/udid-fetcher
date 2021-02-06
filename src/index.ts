@@ -234,7 +234,7 @@ export class UDIDFetcher {
 				const id = this.genString();
 				this._devices.set(id, arr);
 				const api_url = new URL(this._data.apiURL);
-				api_url.pathname = '/final';
+				api_url.pathname = join(api_url.pathname, 'final');
 				api_url.searchParams.append('id', id);
 				for (const k of Object.keys(req.query)) {
 					api_url.searchParams.append(k, req.query[k] as string);
