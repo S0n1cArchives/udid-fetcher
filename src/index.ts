@@ -188,6 +188,7 @@ export class UDIDFetcher {
 
 		this.router.get('/enrollment', async (req: DeviceRequest, res) => {
 			if (!req.headers['user-agent'].includes('Profile')) {
+				console.log('Invalid enrollment request.');
 				return res.redirect('/');
 			}
 			if (typeof req.query.data !== 'undefined') {
