@@ -81,7 +81,6 @@ interface IPSWRes {
 export class UDIDFetcher {
 	router = app()
 	private _data: UDIDFetcherOptions
-	flow_ids: string[] = []
 	constructor(options: UDIDFetcherOptions) {
 		Object.defineProperty(this, '_data', {
 			value: options,
@@ -133,26 +132,14 @@ export class UDIDFetcher {
 		return result;
 	}
 
-	createId(): string {
-		const id = this.genString();
-		console.log(id);
-		this.flow_ids.push(id);
-		console.log(this.flow_ids);
-		return id;
-	}
-
-	removeId(id: string): void {
-		this.flow_ids.splice(this.flow_ids.indexOf(id), 1);
-	}
 
 	initRoutes(): void {
 		this.router.get('/enroll', (req, res) => {
 			let config = readFileSync(join(__dirname, '..', 'enrollment.mobileconfig'), 'utf-8');
 			const xml: MC = parse(config) as unknown as MC;
-			const flow_id = this.createId();
 			const api_url = new URL(this._data.apiURL);
 			api_url.pathname = join(api_url.pathname, 'confirm');
-			xml.PayloadContent.URL = `${format(api_url)}?flow=${flow_id}`;
+			xml.PayloadContent.URL = `${format(api_url)}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
 			xml.PayloadDisplayName = this._data.name;
@@ -183,15 +170,12 @@ export class UDIDFetcher {
 
 			const api_url = new URL(this._data.apiURL);
 
-			return res.redirect(301, `${join(api_url.pathname, 'enrollment')}?data=${btoa(JSON.stringify(data))}&flow=${req.query.flow}`);
+			return res.redirect(301, `${join(api_url.pathname, 'enrollment')}?data=${btoa(JSON.stringify(data))}`);
 		});
 
 		this.router.get('/enrollment', async (req: DeviceRequest, res) => {
-			if (!this.flow_ids.includes(req.query.flow as string)) {
-				return res.json({
-					code: 400,
-					message: 'Invalid enrollment request.'
-				});
+			if (!req.headers['user-agent'].includes('Profile')) {
+				return res.redirect('/');
 			}
 			if (typeof req.query.data !== 'undefined') {
 				const data = JSON.parse(atob(req.query.data as string));
@@ -220,7 +204,6 @@ export class UDIDFetcher {
 				};
 
 
-				this.removeId(req.query.flow as string);
 				req.device = arr;
 				return this._data.done(req, res);
 			}

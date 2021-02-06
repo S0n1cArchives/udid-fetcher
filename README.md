@@ -31,6 +31,7 @@ app.use('/', new UDIDFetcher({
 	apiURL: `https://example.com/`,
 	done: (req, res) => {
 		console.log(req.device) // The recieved device is found in req.device.
+		return res.redirect("/")
 	}
 }).router);
 
