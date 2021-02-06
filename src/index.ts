@@ -30,7 +30,7 @@ interface WithRaw extends Request {
 	rawBody: any
 }
 
-interface DeviceRequest extends Request {
+export interface DeviceRequest extends Request {
 	device: DeviceData
 }
 
