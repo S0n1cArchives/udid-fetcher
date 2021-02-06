@@ -15,7 +15,7 @@ app.use('/', new UDIDFetcher({
 	description: 'Testing to see if this works',
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
-	apiURL: `${process.env.API_URL}/user/device/`,
+	apiURL: process.env.API_URL,
 	query: {
 		id: 'foobar'
 	},

@@ -7,7 +7,7 @@ import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
-import { format, URL, URLSearchParams } from 'url';
+import { format, URL } from 'url';
 
 
 export interface DeviceData {
