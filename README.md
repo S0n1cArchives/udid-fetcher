@@ -29,7 +29,11 @@ app.use('/', new UDIDFetcher({
 	identifier: 'com.example.udid_fetcher',
 	organization: 'Developer Name',
 	apiURL: `https://example.com/`,
+	query: {
+		id: "foobar"
+	},
 	done: (req, res) => {
+		console.log(req.query.id) // "foobar"
 		console.log(req.device) // The recieved device is found in req.device.
 		return res.redirect("/")
 	}

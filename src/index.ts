@@ -7,7 +7,7 @@ import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
-import { format, URL } from 'url';
+import { format, URL, URLSearchParams } from 'url';
 
 
 export interface DeviceData {
@@ -54,6 +54,9 @@ export interface UDIDFetcherOptions {
 	description: string
 	identifier: string
 	apiURL: string
+	query?: {
+		[k: string]: string
+	},
 	done: (req: DeviceRequest, res: Response) => void
 }
 
@@ -139,6 +142,11 @@ export class UDIDFetcher {
 			const xml: MC = parse(config) as unknown as MC;
 			const api_url = new URL(this._data.apiURL);
 			api_url.pathname = join(api_url.pathname, 'confirm');
+			if (typeof this._data.query !== 'undefined') {
+				for (const k of Object.keys(this._data.query)) {
+					api_url.searchParams.append(k, this._data.query[k]);
+				}
+			}
 			xml.PayloadContent.URL = `${format(api_url)}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
@@ -169,8 +177,13 @@ export class UDIDFetcher {
 			var data = parse(rawdata);
 
 			const api_url = new URL(this._data.apiURL);
+			api_url.pathname = join(api_url.pathname, 'enrollment');
+			api_url.searchParams.append('data', btoa(JSON.stringify(data)));
+			for (const k of Object.keys(req.query)) {
+				api_url.searchParams.append(k, req.query[k] as string);
+			}
 
-			return res.redirect(301, `${join(api_url.pathname, 'enrollment')}?data=${btoa(JSON.stringify(data))}`);
+			return res.redirect(301, `${format(api_url)}`);
 		});
 
 		this.router.get('/enrollment', async (req: DeviceRequest, res) => {

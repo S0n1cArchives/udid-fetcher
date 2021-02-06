@@ -16,7 +16,11 @@ app.use('/', new UDIDFetcher({
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
 	apiURL: `${process.env.API_URL}/user/device/`,
+	query: {
+		id: 'foobar'
+	},
 	done: (req, res) => {
+		console.log(req.query.id);
 		devices.push(req.device);
 		return res.redirect('/');
 	}
