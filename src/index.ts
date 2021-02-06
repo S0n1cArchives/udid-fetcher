@@ -149,7 +149,7 @@ export class UDIDFetcher {
 			const flow_id = this.createId();
 			const api_url = new URL(this._data.apiURL);
 			api_url.pathname = join(api_url.pathname, 'confirm');
-			xml.PayloadContent.URL = `${format(api_url)}/confirm?flow=${flow_id}`;
+			xml.PayloadContent.URL = `${format(api_url)}?flow=${flow_id}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
 			xml.PayloadDisplayName = this._data.name;
