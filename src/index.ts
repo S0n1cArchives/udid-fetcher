@@ -8,6 +8,7 @@ import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
 import { format, URL } from 'url';
+import BaseStore from './BaseStore';
 
 
 export interface DeviceData {
@@ -81,9 +82,18 @@ interface IPSWRes {
 	}[]
 }
 
+class Devices extends BaseStore<string, DeviceData> {}
+class FlowIds extends BaseStore<string, string> {
+	make(id: string): string {
+		this.set(id, id);
+		return id;
+	}
+}
 export class UDIDFetcher {
 	router = app()
 	private _data: UDIDFetcherOptions
+	private _devices = new Devices()
+	private _flow_ids = new FlowIds()
 	constructor(options: UDIDFetcherOptions) {
 		Object.defineProperty(this, '_data', {
 			value: options,
@@ -141,6 +151,8 @@ export class UDIDFetcher {
 			const xml: MC = parse(config) as unknown as MC;
 			const api_url = new URL(this._data.apiURL);
 			api_url.pathname = join(api_url.pathname, 'confirm');
+			const flow_id = this._flow_ids.make(this.genString());
+			api_url.searchParams.append('flow_id', flow_id);
 			if (typeof this._data.query !== 'undefined') {
 				for (const k of Object.keys(this._data.query)) {
 					api_url.searchParams.append(k, this._data.query[k]);
@@ -187,11 +199,13 @@ export class UDIDFetcher {
 		});
 
 		this.router.get('/enrollment', async (req: DeviceRequest, res) => {
-			if (!req.headers['user-agent'].includes('Profile')) {
-				console.log('Invalid enrollment request.');
-				return res.redirect('/');
-			}
-			if (typeof req.query.data !== 'undefined') {
+			/*
+			 * if (!req.headers['user-agent'].includes('Profile')) {
+			 * 	console.log('Invalid enrollment request.');
+			 * 	return res.redirect('/');
+			 * }
+			 */
+			if (typeof req.query.data !== 'undefined' && req.headers['user-agent'].includes('Profile')) {
 				const data = JSON.parse(atob(req.query.data as string));
 
 				var arr: DeviceData;
@@ -217,9 +231,27 @@ export class UDIDFetcher {
 					}
 				};
 
+				const id = this.genString();
+				this._devices.set(id, arr);
+				const api_url = new URL(this._data.apiURL);
+				api_url.pathname = '/final';
+				api_url.searchParams.append('id', id);
+				for (const k of Object.keys(req.query)) {
+					api_url.searchParams.append(k, req.query[k] as string);
+				}
+				return res.redirect(301, `${format(api_url)}`);
+			}
+		});
 
-				req.device = arr;
-				return this._data.done(req, res);
+		this.router.get('/final', async (req: DeviceRequest, res) => {
+			if (typeof req.query.id !== 'undefined' && this._flow_ids.has(req.query.flow_id as string)) {
+				if (!req.headers['user-agent'].includes('Profile')) {
+					const device = this._devices.get(req.query.id as string);
+					req.device = device;
+					this._flow_ids.delete(req.query.flow_id as string);
+					return this._data.done(req, res);
+				}
+				return res.end();
 			}
 		});
 	}
