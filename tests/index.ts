@@ -16,7 +16,7 @@ app.use('/', new UDIDFetcher({
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
 	doneURL: '/',
-	callbackURL: `${process.env.API_URL}/confirm`,
+	apiURL: `${process.env.API_URL}/user/device/`,
 	done: (device) => {
 		devices.push(device);
 	}

@@ -29,7 +29,7 @@ app.use('/', new UDIDFetcher({
 	identifier: 'com.example.udid_fetcher',
 	organization: 'Developer Name',
 	doneURL: '/',
-	callbackURL: `https://example.com/confirm`,
+	apiURL: `https://example.com/`,
 	done: (device, req) => {
 		/**
 		 * device - DeviceData interface

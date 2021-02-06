@@ -7,6 +7,7 @@ import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
+import { format, URL } from 'url';
 
 
 export interface DeviceData {
@@ -48,7 +49,7 @@ export interface UDIDFetcherOptions {
 	organization: string
 	description: string
 	identifier: string
-	callbackURL: string
+	apiURL: string
 	doneURL: string
 	done: (data: DeviceData, req: Request) => void
 }
@@ -146,7 +147,9 @@ export class UDIDFetcher {
 			let config = readFileSync(join(__dirname, '..', 'enrollment.mobileconfig'), 'utf-8');
 			const xml: MC = parse(config) as unknown as MC;
 			const flow_id = this.createId();
-			xml.PayloadContent.URL = `${this._data.callbackURL}?flow=${flow_id}`;
+			const api_url = new URL(this._data.apiURL);
+			api_url.pathname = join(api_url.pathname, 'confirm');
+			xml.PayloadContent.URL = `${format(api_url)}/confirm?flow=${flow_id}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
 			xml.PayloadDisplayName = this._data.name;
@@ -164,6 +167,7 @@ export class UDIDFetcher {
 		});
 
 		this.router.post('/confirm', (req: WithRaw, res) => {
+			console.log(req.path, req.rawBody);
 			var rawdata = req.rawBody;
 			if (typeof rawdata === 'undefined') {
 				console.log('failed');
@@ -174,8 +178,9 @@ export class UDIDFetcher {
 
 			var data = parse(rawdata);
 
+			const api_url = new URL(this._data.apiURL);
 
-			return res.redirect(301, `/enrollment?data=${btoa(JSON.stringify(data))}&flow=${req.query.flow}`);
+			return res.redirect(301, `${join(api_url.pathname, 'enrollment')}?data=${btoa(JSON.stringify(data))}&flow=${req.query.flow}`);
 		});
 
 		this.router.get('/enrollment', async (req, res) => {
