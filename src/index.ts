@@ -1,7 +1,7 @@
 import { json } from 'body-parser';
 import btoa from 'btoa';
 import atob from 'atob';
-import { Request, Router as app } from 'express';
+import { Request, Response, Router as app } from 'express';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
@@ -30,6 +30,10 @@ interface WithRaw extends Request {
 	rawBody: any
 }
 
+interface DeviceRequest extends Request {
+	device: DeviceData
+}
+
 interface MC {
 	PayloadContent: {
 		URL: string
@@ -50,8 +54,7 @@ export interface UDIDFetcherOptions {
 	description: string
 	identifier: string
 	apiURL: string
-	doneURL: string
-	done: (data: DeviceData, req: Request) => void
+	done: (req: DeviceRequest, res: Response) => void
 }
 
 interface IPSWRes {
@@ -183,13 +186,12 @@ export class UDIDFetcher {
 			return res.redirect(301, `${join(api_url.pathname, 'enrollment')}?data=${btoa(JSON.stringify(data))}&flow=${req.query.flow}`);
 		});
 
-		this.router.get('/enrollment', async (req, res) => {
+		this.router.get('/enrollment', async (req: DeviceRequest, res) => {
 			if (!this.flow_ids.includes(req.query.flow as string)) {
-				/*
-				 * return res.json({ ...req.query,
-				 * 	ids: this.flow_ids });
-				 */
-				return res.redirect(this._data.doneURL);
+				return res.json({
+					code: 400,
+					message: 'Invalid enrollment request.'
+				});
 			}
 			if (typeof req.query.data !== 'undefined') {
 				const data = JSON.parse(atob(req.query.data as string));
@@ -219,10 +221,8 @@ export class UDIDFetcher {
 
 
 				this.removeId(req.query.flow as string);
-
-				await this._data.done(arr, req);
-
-				res.redirect(this._data.doneURL);
+				req.device = arr;
+				return this._data.done(req, res);
 			}
 		});
 	}

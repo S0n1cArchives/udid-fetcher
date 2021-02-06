@@ -15,10 +15,10 @@ app.use('/', new UDIDFetcher({
 	description: 'Testing to see if this works',
 	identifier: 'ca.s0n1c.test',
 	organization: 'S0n1c',
-	doneURL: '/',
 	apiURL: `${process.env.API_URL}/user/device/`,
-	done: (device) => {
-		devices.push(device);
+	done: (req, res) => {
+		devices.push(req.device);
+		return res.redirect('/');
 	}
 }).router);
 

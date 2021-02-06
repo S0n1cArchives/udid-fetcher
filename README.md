@@ -28,15 +28,9 @@ app.use('/', new UDIDFetcher({
 	description: 'Profile Description',
 	identifier: 'com.example.udid_fetcher',
 	organization: 'Developer Name',
-	doneURL: '/',
 	apiURL: `https://example.com/`,
-	done: (device, req) => {
-		/**
-		 * device - DeviceData interface
-		 * req    - ExpressJS Request interface
-		 */
-		console.log(device)
-		console.log(req.path)
+	done: (req, res) => {
+		console.log(req.device) // The recieved device is found in req.device.
 	}
 }).router);
 
