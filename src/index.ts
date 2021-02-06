@@ -146,10 +146,11 @@ export class UDIDFetcher {
 				for (const k of Object.keys(this._data.query)) {
 					api_url.searchParams.append(k, this._data.query[k]);
 				}
-				for (const k of Object.keys(req.query)) {
-					api_url.searchParams.append(k, req.query[k] as string);
-				}
 			}
+			for (const k of Object.keys(req.query)) {
+				api_url.searchParams.append(k, req.query[k] as string);
+			}
+			console.log(api_url, format(api_url));
 			xml.PayloadContent.URL = `${format(api_url)}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
