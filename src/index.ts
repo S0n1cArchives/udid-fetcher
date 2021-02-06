@@ -117,7 +117,6 @@ export class UDIDFetcher {
 	}
 
 	getVersion(results: IPSWRes, build: string): string {
-		console.log(build);
 		return results.firmwares.find(f => f.buildid === build).version;
 	}
 
@@ -150,7 +149,7 @@ export class UDIDFetcher {
 			for (const k of Object.keys(req.query)) {
 				api_url.searchParams.append(k, req.query[k] as string);
 			}
-			console.log(api_url, format(api_url));
+
 			xml.PayloadContent.URL = `${format(api_url)}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
@@ -169,14 +168,11 @@ export class UDIDFetcher {
 		});
 
 		this.router.post('/confirm', (req: WithRaw, res) => {
-			console.log(req.path, req.rawBody);
 			var rawdata = req.rawBody;
 			if (typeof rawdata === 'undefined') {
-				console.log('failed');
 				throw 'failed to get rawdata';
 			}
 
-			console.log(rawdata.length);
 
 			var data = parse(rawdata);
 
