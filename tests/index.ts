@@ -1,5 +1,7 @@
 import { config } from 'dotenv';
 import express from 'express';
+import { readFileSync } from 'fs';
+import { join } from 'path/posix';
 import { DeviceData, UDIDFetcher } from '../src';
 
 config();
@@ -18,6 +20,10 @@ app.use('/', new UDIDFetcher({
 	apiURL: process.env.API_URL,
 	query: {
 		id: 'foobar'
+	},
+	signing: {
+		key: readFileSync(join(__dirname, 'key.pem'), { encoding: 'utf-8' }),
+		cert: readFileSync(join(__dirname, 'cert.pem'), { encoding: 'utf-8' })
 	},
 	done: (req, res) => {
 		console.log(req.query.id);

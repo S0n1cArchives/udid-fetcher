@@ -7,6 +7,9 @@ import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
 import fetch from 'node-fetch';
+
+import { getSignedConfig } from 'mobileconfig';
+
 import { format, URL } from 'url';
 import BaseStore from './BaseStore';
 
@@ -35,7 +38,7 @@ export interface DeviceRequest extends Request {
 	device: DeviceData
 }
 
-interface MC {
+export interface MC {
 	PayloadContent: {
 		URL: string
 		DeviceAttributes: string[]
@@ -49,15 +52,22 @@ interface MC {
 	PayloadType: string
 }
 
+export interface SigningConfig {
+	key: string
+	cert: string
+}
+
 export interface UDIDFetcherOptions {
 	name: string
 	organization: string
 	description: string
 	identifier: string
 	apiURL: string
+	signing?: SigningConfig
 	query?: {
 		[k: string]: string
 	},
+	// eslint-disable-next-line no-unused-vars
 	done: (req: DeviceRequest, res: Response) => void
 }
 
@@ -121,9 +131,29 @@ export class UDIDFetcher {
 		this.router.use(json());
 	}
 
+	async request<T>(url: string, type?: 'json' | 'buffer' | 'text' | 'arraybuffer'): Promise<string | T | Buffer | ArrayBuffer> {
+		const res = await fetch(url);
+		if (!res.ok) {
+			throw res;
+		}
+		if (typeof type === 'undefined') {
+			type = 'json';
+		}
+		switch (type) {
+			case 'arraybuffer':
+				return res.arrayBuffer();
+			case 'buffer':
+				return res.buffer();
+			case 'text':
+				return res.text();
+			case 'json':
+				return res.json() as Promise<T>;
+		}
+	}
+
 	async getDevice(model: string): Promise<IPSWRes> {
-		const res = await fetch(`https://api.ipsw.me/v4/device/${model}?type=ipsw`);
-		return res.json();
+		const res = await this.request<IPSWRes>(`https://api.ipsw.me/v4/device/${model}?type=ipsw`);
+		return res as IPSWRes;
 	}
 
 	getVersion(results: IPSWRes, build: string): string {
@@ -144,9 +174,13 @@ export class UDIDFetcher {
 		return result;
 	}
 
+	async signConfig(config: MC): Promise<Buffer> {
+		const { signing } = this._data;
+		return new Promise((resolve, reject) => getSignedConfig(config, signing, (err, data) => err ? reject(err) : resolve(data)));
+	}
 
 	initRoutes(): void {
-		this.router.get('/enroll', (req, res) => {
+		this.router.get('/enroll', async (req, res) => {
 			let config = readFileSync(join(__dirname, '..', 'enrollment.mobileconfig'), 'utf-8');
 			const xml: MC = parse(config) as unknown as MC;
 			const api_url = new URL(this._data.apiURL);
@@ -162,14 +196,24 @@ export class UDIDFetcher {
 				api_url.searchParams.append(k, req.query[k] as string);
 			}
 
-			xml.PayloadContent.URL = `${format(api_url)}`;
+			xml.PayloadContent.URL = `${api_url.toString()}`;
 			xml.PayloadUUID = v4().toUpperCase();
 			xml.PayloadIdentifier = this._data.identifier;
 			xml.PayloadDisplayName = this._data.name;
 			xml.PayloadOrganization = this._data.organization;
 			xml.PayloadDescription = this._data.description;
 
+			if (typeof this._data.signing !== 'undefined') {
+				const newconfig = await this.signConfig(xml);
+				return res.set({
+					'content-type': 'application/x-apple-aspen-config; chatset=utf-8',
+					'Content-Disposition':  'attachment; filename="enrollment.mobileconfig"'
+				}).send(newconfig);
+			}
+
+
 			config = build(xml as unknown as PlistValue);
+
 
 			//	res.set('content-type', 'application/xml').send(config);
 
@@ -239,7 +283,7 @@ export class UDIDFetcher {
 				for (const k of Object.keys(req.query)) {
 					api_url.searchParams.append(k, req.query[k] as string);
 				}
-				return res.redirect(301, `${format(api_url)}`);
+				return res.redirect(301, `${api_url.toString()}`);
 			}
 		});
 
