@@ -166,7 +166,7 @@ export class UDIDFetcher {
 
 	getSigningStatus(results: IPSWRes, build: string): boolean {
 		const find = results.firmwares.find(f => f.buildid === build);
-		if (typeof find === 'undefined') {
+		if (typeof find !== 'undefined') {
 			return results.firmwares.find(f => f.buildid === build).signed;
 		}
 		return null;
