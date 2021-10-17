@@ -157,11 +157,19 @@ export class UDIDFetcher {
 	}
 
 	getVersion(results: IPSWRes, build: string): string {
-		return results.firmwares.find(f => f.buildid === build).version;
+		const find = results.firmwares.find(f => f.buildid === build);
+		if (typeof find !== 'undefined') {
+			return results.firmwares.find(f => f.buildid === build).version;
+		}
+		return null;
 	}
 
 	getSigningStatus(results: IPSWRes, build: string): boolean {
-		return results.firmwares.find(f => f.buildid === build).signed;
+		const find = results.firmwares.find(f => f.buildid === build);
+		if (typeof find === 'undefined') {
+			return results.firmwares.find(f => f.buildid === build).signed;
+		}
+		return null;
 	}
 
 	genString(length = 10): string {
