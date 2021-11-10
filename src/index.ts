@@ -71,6 +71,26 @@ export interface UDIDFetcherOptions {
 	done: (req: DeviceRequest, res: Response) => void
 }
 
+interface FirmwareFile {
+	filesize: number
+	url: string
+	name: string
+	sum: {
+		sha1: string
+		md5: string
+	}
+}
+
+interface FirmwareInfo {
+	identifier: string
+	file: FirmwareFile
+	version: string
+	buildid: string
+	releasedate: Date
+	uploaddate: Date
+	signed: boolean
+}
+
 interface IPSWRes {
 	name: string
 	identifier: string
@@ -78,18 +98,7 @@ interface IPSWRes {
 	platform: string
 	cpid: number
 	bdid: number
-	firmwares: {
-		identifier: string
-		version: string
-		buildid: string
-		sha1sum: string
-		md5sum: string
-		filesize: number
-		url: string
-		releasedate: string
-		uploaddate: string
-		signed:boolean
-	}[]
+	firmwares: FirmwareInfo[]
 }
 
 class Devices extends BaseStore<string, DeviceData> {}
@@ -152,7 +161,7 @@ export class UDIDFetcher {
 	}
 
 	async getDevice(model: string): Promise<IPSWRes> {
-		const res = await this.request<IPSWRes>(`https://api.ipsw.me/v4/device/${model}?type=ipsw`);
+		const res = await this.request<IPSWRes>(`https://ipsw.s0n1c.ca/device/${model}/firmwares`);
 		return res as IPSWRes;
 	}
 
