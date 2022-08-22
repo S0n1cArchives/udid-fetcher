@@ -1,119 +1,116 @@
 import { json } from 'body-parser';
-import btoa from 'btoa';
-import atob from 'atob';
 import { Request, Response, Router as app } from 'express';
 import { readFileSync } from 'fs';
+import fetch from 'node-fetch';
 import { join } from 'path';
 import { build, parse, PlistValue } from 'plist';
 import { v4 } from 'uuid';
-import fetch from 'node-fetch';
 
 import { getSignedConfig } from 'mobileconfig';
 
-import { format, URL } from 'url';
-import BaseStore from './BaseStore';
-
-
 export interface DeviceData {
-	name: string,
-	boardconfig: string,
-	platform: string,
-	cpid: number,
-	bdid: number,
-	model: string,
-	udid: string,
+	name: string;
+	boardconfig: string;
+	platform: string;
+	cpid: number;
+	bdid: number;
+	model: string;
+	udid: string;
 	ios: {
-		version: string,
-		build: string,
-		fixVersion?: boolean,
-		signed?: boolean
-	}
+		version: string;
+		build: string;
+		fixVersion?: boolean;
+		signed?: boolean;
+	};
 }
 
 interface WithRaw extends Request {
-	rawBody: any
+	rawBody: any;
 }
 
 export interface DeviceRequest extends Request {
-	device: DeviceData
+	device: DeviceData;
 }
 
 export interface MC {
 	PayloadContent: {
-		URL: string
-		DeviceAttributes: string[]
-	}
-	PayloadOrganization: string
-	PayloadDisplayName: string
-	PayloadVersion: string
-	PayloadUUID: string
-	PayloadIdentifier: string
-	PayloadDescription: string
-	PayloadType: string
+		URL: string;
+		DeviceAttributes: string[];
+	};
+	PayloadOrganization: string;
+	PayloadDisplayName: string;
+	PayloadVersion: string;
+	PayloadUUID: string;
+	PayloadIdentifier: string;
+	PayloadDescription: string;
+	PayloadType: string;
 }
 
 export interface SigningConfig {
-	key: string
-	cert: string
+	key: string;
+	cert: string;
 }
 
 export interface UDIDFetcherOptions {
-	name: string
-	organization: string
-	description: string
-	identifier: string
-	apiURL: string
-	signing?: SigningConfig
+	name: string;
+	organization: string;
+	description: string;
+	identifier: string;
+	apiURL: string | undefined;
+	signing?: SigningConfig;
 	query?: {
-		[k: string]: string
-	},
+		[k: string]: string;
+	};
 	// eslint-disable-next-line no-unused-vars
-	done: (req: DeviceRequest, res: Response) => void
+	done: (req: DeviceRequest, res: Response) => void;
 }
 
 interface FirmwareFile {
-	filesize: number
-	url: string
-	name: string
+	filesize: number;
+	url: string;
+	name: string;
 	sum: {
-		sha1: string
-		md5: string
-	}
+		sha1: string;
+		md5: string;
+	};
 }
 
 interface FirmwareInfo {
-	identifier: string
-	file: FirmwareFile
-	version: string
-	buildid: string
-	releasedate: Date
-	uploaddate: Date
-	signed: boolean
+	identifier: string;
+	file: FirmwareFile;
+	version: string;
+	buildid: string;
+	releasedate: Date;
+	uploaddate: Date;
+	signed: boolean;
 }
 
 interface IPSWRes {
-	name: string
-	identifier: string
-	boardconfig: string
-	platform: string
-	cpid: number
-	bdid: number
-	firmwares: FirmwareInfo[]
+	name: string;
+	identifier: string;
+	boardconfig: string;
+	platform: string;
+	cpid: number;
+	bdid: number;
+	firmwares: FirmwareInfo[];
 }
 
-class Devices extends BaseStore<string, DeviceData> {}
-class FlowIds extends BaseStore<string, string> {
+class Devices extends Map<string, DeviceData> {}
+class FlowIds extends Map<string, string> {
 	make(id: string): string {
 		this.set(id, id);
 		return id;
 	}
 }
 export class UDIDFetcher {
-	router = app()
-	private _data: UDIDFetcherOptions
-	private _devices = new Devices()
-	private _flow_ids = new FlowIds()
+	router = app();
+	private _data: UDIDFetcherOptions;
+	private _devices = new Devices();
+	private _flow_ids = new FlowIds();
 	constructor(options: UDIDFetcherOptions) {
+		if (typeof options.apiURL === 'undefined') {
+			throw new Error('apiURL is required');
+		}
 		Object.defineProperty(this, '_data', {
 			value: options,
 			configurable: true,
@@ -123,7 +120,7 @@ export class UDIDFetcher {
 		this.init();
 	}
 
-	initConfigs():void {
+	initConfigs(): void {
 		this.router.use((req: WithRaw, res, next) => {
 			req.rawBody = '';
 			req.setEncoding('utf8');
@@ -166,24 +163,24 @@ export class UDIDFetcher {
 	}
 
 	getVersion(results: IPSWRes, build: string): string {
-		const find = results.firmwares.find(f => f.buildid === build);
+		const find = results.firmwares.find((f) => f.buildid === build);
 		if (typeof find !== 'undefined') {
-			return results.firmwares.find(f => f.buildid === build).version;
+			return results.firmwares.find((f) => f.buildid === build).version;
 		}
 		return null;
 	}
 
 	getSigningStatus(results: IPSWRes, build: string): boolean {
-		const find = results.firmwares.find(f => f.buildid === build);
+		const find = results.firmwares.find((f) => f.buildid === build);
 		if (typeof find !== 'undefined') {
-			return results.firmwares.find(f => f.buildid === build).signed;
+			return results.firmwares.find((f) => f.buildid === build).signed;
 		}
 		return null;
 	}
 
 	genString(length = 10): string {
-		var result           = '';
-		var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		var result = '';
+		var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 		var charactersLength = characters.length;
 		for (var i = 0; i < length; i++) {
 			result += characters.charAt(Math.floor(Math.random() * charactersLength));
@@ -193,7 +190,7 @@ export class UDIDFetcher {
 
 	async signConfig(config: MC): Promise<Buffer> {
 		const { signing } = this._data;
-		return new Promise((resolve, reject) => getSignedConfig(config, signing, (err, data) => err ? reject(err) : resolve(data)));
+		return new Promise((resolve, reject) => getSignedConfig(config, signing, (err, data) => (err ? reject(err) : resolve(data))));
 	}
 
 	initRoutes(): void {
@@ -222,21 +219,21 @@ export class UDIDFetcher {
 
 			if (typeof this._data.signing !== 'undefined') {
 				const newconfig = await this.signConfig(xml);
-				return res.set({
-					'content-type': 'application/x-apple-aspen-config; chatset=utf-8',
-					'Content-Disposition':  'attachment; filename="enrollment.mobileconfig"'
-				}).send(newconfig);
+				return res
+					.set({
+						'content-type': 'application/x-apple-aspen-config; chatset=utf-8',
+						'Content-Disposition': 'attachment; filename="enrollment.mobileconfig"'
+					})
+					.send(newconfig);
 			}
 
-
 			config = build(xml as unknown as PlistValue);
-
 
 			//	res.set('content-type', 'application/xml').send(config);
 
 			res.set({
 				'content-type': 'application/x-apple-aspen-config; chatset=utf-8',
-				'Content-Disposition':  'attachment; filename="enrollment.mobileconfig"'
+				'Content-Disposition': 'attachment; filename="enrollment.mobileconfig"'
 			}).send(config);
 		});
 
@@ -246,17 +243,16 @@ export class UDIDFetcher {
 				throw 'failed to get rawdata';
 			}
 
-
 			var data = parse(rawdata);
 
 			const api_url = new URL(this._data.apiURL);
 			api_url.pathname = join(api_url.pathname, 'enrollment');
-			api_url.searchParams.append('data', btoa(JSON.stringify(data)));
+			api_url.searchParams.append('data', Buffer.from(JSON.stringify(data)).toString('base64'));
 			for (const k of Object.keys(req.query)) {
 				api_url.searchParams.append(k, req.query[k] as string);
 			}
 
-			return res.redirect(301, `${format(api_url)}`);
+			return res.redirect(301, `${api_url.toString()}`);
 		});
 
 		this.router.get('/enrollment', async (req: DeviceRequest, res) => {
@@ -267,7 +263,7 @@ export class UDIDFetcher {
 			 * }
 			 */
 			if (typeof req.query.data !== 'undefined' && req.headers['user-agent'].includes('Profile')) {
-				const data = JSON.parse(atob(req.query.data as string));
+				const data = JSON.parse(Buffer.from(req.query.data as string, 'base64').toString('utf-8'));
 
 				var arr: DeviceData;
 
